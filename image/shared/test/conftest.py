@@ -32,10 +32,16 @@ def reset_logging():
         logger.setLevel(logging.NOTSET)
         # Ensure propagation is enabled (default)
         logger.propagate = True
-        # Remove any handlers that were added
-        logger.handlers.clear()
+        # Close and remove any handlers that were added
+        # Must close handlers explicitly to release file descriptors
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            handler.close()
 
     # Also reset the root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.WARNING)  # Python's default
-    root_logger.handlers.clear()
+    # Close and remove root logger handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        handler.close()
