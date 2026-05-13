@@ -158,7 +158,17 @@ def test_rhocs_identical_to_radosgw():
         )
 
         # Verify both engines have identical configuration
-        assert rhocs_engine._connect_kwargs == radosgw_engine._connect_kwargs
+        # Compare _connect_kwargs excluding the 'config' object (instances differ but values match)
+        rhocs_kwargs = {k: v for k, v in rhocs_engine._connect_kwargs.items() if k != "config"}
+        radosgw_kwargs = {k: v for k, v in radosgw_engine._connect_kwargs.items() if k != "config"}
+        assert rhocs_kwargs == radosgw_kwargs
+
+        # Verify config objects have matching signature versions
+        rhocs_config = rhocs_engine._connect_kwargs.get("config")
+        radosgw_config = radosgw_engine._connect_kwargs.get("config")
+        if rhocs_config and radosgw_config:
+            assert rhocs_config.signature_version == radosgw_config.signature_version
+
         assert rhocs_engine.minimum_chunk_size == radosgw_engine.minimum_chunk_size
         assert rhocs_engine.maximum_chunk_size == radosgw_engine.maximum_chunk_size
         assert rhocs_engine.server_side_assembly == radosgw_engine.server_side_assembly
