@@ -44,13 +44,14 @@ def radosgw_storage_engine():
     RadosGW behavior. The fixture creates a bucket and seeds test data.
     """
     with mock_s3():
-        # Create bucket
+        # Create bucket using standard S3 endpoint (moto will intercept)
         boto3.client("s3", region_name=_TEST_REGION).create_bucket(Bucket=_TEST_BUCKET)
 
         # Initialize RadosGWStorage with server-side assembly enabled
+        # Use standard S3 endpoint format that moto can intercept
         engine = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="radosgw.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -82,9 +83,10 @@ def radosgw_storage_engine_client_side():
         boto3.client("s3", region_name=_TEST_REGION).create_bucket(Bucket=_TEST_BUCKET)
 
         # Initialize RadosGWStorage with client-side assembly
+        # Use standard S3 endpoint format that moto can intercept
         engine = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="radosgw.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -196,8 +198,12 @@ def test_radosgw_chunk_upload_server_side(radosgw_storage_engine, chunk_count):
     final_path = "radosgw/chunked/server-side"
     engine.complete_chunked_upload(upload_id, final_path, metadata)
 
-    # Verify file exists and has correct content
-    if chunk_count != 0:
+    # Verify expected behavior based on chunk count
+    if chunk_count == 0:
+        # Empty uploads should not create a file (early return in cloud.py:648-650)
+        assert not engine.exists(final_path), "Empty upload should not create file"
+    else:
+        # Non-empty uploads should create file with correct content
         assert engine.exists(final_path)
         assert engine.get_content(final_path) == final_data
 
@@ -350,9 +356,10 @@ def test_radosgw_copy_operations(radosgw_storage_engine):
     engine = radosgw_storage_engine
 
     # Create another RadosGW storage engine
+    # Use standard S3 endpoint format that moto can intercept
     another_engine = RadosGWStorage(
         _TEST_CONTEXT,
-        hostname="radosgw2.example.com",
+        hostname=f"s3.{_TEST_REGION}.amazonaws.com",
         is_secure=True,
         storage_path="/another",
         access_key=_TEST_USER,
@@ -376,7 +383,7 @@ def test_radosgw_configuration_validation(radosgw_storage_engine):
     engine = radosgw_storage_engine
 
     # Verify endpoint URL is correctly built
-    expected_endpoint = "https://radosgw.example.com"
+    expected_endpoint = f"https://s3.{_TEST_REGION}.amazonaws.com"
     assert engine._connect_kwargs["endpoint_url"] == expected_endpoint
 
     # Verify region is set
@@ -395,7 +402,7 @@ def test_radosgw_configuration_validation(radosgw_storage_engine):
 
         engine_with_port = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="radosgw.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -406,7 +413,8 @@ def test_radosgw_configuration_validation(radosgw_storage_engine):
         )
 
         assert (
-            engine_with_port._connect_kwargs["endpoint_url"] == "https://radosgw.example.com:8080"
+            engine_with_port._connect_kwargs["endpoint_url"]
+            == f"https://s3.{_TEST_REGION}.amazonaws.com:8080"
         )
 
 
@@ -416,7 +424,7 @@ def test_radosgw_error_handling():
         # Create an engine but not the bucket
         engine = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="radosgw.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -440,7 +448,7 @@ def test_radosgw_timeout_configuration():
         # Server-side assembly: 60s timeout
         engine_server_side = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="radosgw.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -454,7 +462,7 @@ def test_radosgw_timeout_configuration():
         # Client-side assembly: 600s timeout
         engine_client_side = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="radosgw.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,

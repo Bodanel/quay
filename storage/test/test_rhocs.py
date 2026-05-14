@@ -40,7 +40,7 @@ def rhocs_storage_engine():
         # Initialize RHOCSStorage
         engine = RHOCSStorage(
             _TEST_CONTEXT,
-            hostname="rhocs.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -131,7 +131,7 @@ def test_rhocs_identical_to_radosgw():
         # Create both RHOCS and RadosGW storage engines with identical config
         rhocs_engine = RHOCSStorage(
             _TEST_CONTEXT,
-            hostname="storage.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -145,7 +145,7 @@ def test_rhocs_identical_to_radosgw():
 
         radosgw_engine = RadosGWStorage(
             _TEST_CONTEXT,
-            hostname="storage.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
@@ -166,8 +166,15 @@ def test_rhocs_identical_to_radosgw():
         # Verify config objects have matching signature versions
         rhocs_config = rhocs_engine._connect_kwargs.get("config")
         radosgw_config = radosgw_engine._connect_kwargs.get("config")
-        if rhocs_config and radosgw_config:
-            assert rhocs_config.signature_version == radosgw_config.signature_version
+
+        # Both engines should always have config objects
+        assert rhocs_config is not None, "RHOCS engine missing config object"
+        assert radosgw_config is not None, "RadosGW engine missing config object"
+
+        # Verify config objects have matching properties
+        assert rhocs_config.signature_version == radosgw_config.signature_version
+        assert rhocs_config.connect_timeout == radosgw_config.connect_timeout
+        assert rhocs_config.read_timeout == radosgw_config.read_timeout
 
         assert rhocs_engine.minimum_chunk_size == radosgw_engine.minimum_chunk_size
         assert rhocs_engine.maximum_chunk_size == radosgw_engine.maximum_chunk_size
@@ -217,7 +224,7 @@ def test_rhocs_inheritance():
 
         engine = RHOCSStorage(
             _TEST_CONTEXT,
-            hostname="rhocs.example.com",
+            hostname=f"s3.{_TEST_REGION}.amazonaws.com",
             is_secure=True,
             storage_path="/quay",
             access_key=_TEST_USER,
