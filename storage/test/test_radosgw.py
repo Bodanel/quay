@@ -355,7 +355,11 @@ def test_radosgw_copy_operations(radosgw_storage_engine):
     """Test copy operations between storage backends (Acceptance Criteria Test 8)."""
     engine = radosgw_storage_engine
 
-    # Create another RadosGW storage engine
+    # Create a second bucket for the target engine to simulate cross-backend copy
+    another_bucket = "test-radosgw-bucket-2"
+    boto3.client("s3", region_name=_TEST_REGION).create_bucket(Bucket=another_bucket)
+
+    # Create another RadosGW storage engine with different bucket
     # Use standard S3 endpoint format that moto can intercept
     another_engine = RadosGWStorage(
         _TEST_CONTEXT,
@@ -364,7 +368,7 @@ def test_radosgw_copy_operations(radosgw_storage_engine):
         storage_path="/another",
         access_key=_TEST_USER,
         secret_key=_TEST_PASSWORD,
-        bucket_name=_TEST_BUCKET,
+        bucket_name=another_bucket,
         region_name=_TEST_REGION,
     )
 
